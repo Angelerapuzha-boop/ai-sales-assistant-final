@@ -1,0 +1,1266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Sales Assistant</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0e1a;--panel:#1e293b;--border:#334155;--accent:#3b82f6;
+  --accent2:#1d4ed8;--text:#e2e8f0;--muted:#94a3b8;
+  --hot:#ef4444;--warm:#f59e0b;--cold:#60a5fa;
+  --green:#22c55e;--red:#ef4444;
+}
+body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column}
+#app{display:flex;flex:1;overflow:hidden}
+
+/* Sidebar */
+#sidebar{width:220px;background:linear-gradient(180deg,#0f172a,#1e293b);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
+#sidebar h2{padding:20px 16px 8px;font-size:1rem;color:var(--accent);border-bottom:1px solid var(--border)}
+#user-info{padding:8px 16px 12px;font-size:.75rem;color:var(--muted);border-bottom:1px solid var(--border)}
+#nav{flex:1;padding:8px 0;overflow-y:auto}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;color:var(--muted);font-size:.875rem;transition:all .15s;border-left:3px solid transparent}
+.nav-item:hover{color:var(--text);background:rgba(255,255,255,.05)}
+.nav-item.active{color:var(--accent);background:rgba(59,130,246,.1);border-left-color:var(--accent)}
+#sys-status{padding:12px 16px;border-top:1px solid var(--border);font-size:.7rem;color:var(--muted)}
+#sys-status div{margin-bottom:3px}
+#logout-btn{margin:12px;padding:8px;background:#1e3a5f;border:1px solid var(--border);color:var(--text);border-radius:6px;cursor:pointer;font-size:.8rem}
+#logout-btn:hover{background:var(--accent2)}
+
+/* Main */
+#main{flex:1;overflow:hidden;display:flex;flex-direction:column}
+#topbar{padding:12px 24px;border-bottom:1px solid var(--border);background:var(--panel);display:flex;justify-content:space-between;align-items:center}
+#topbar h1{font-size:1.1rem;font-weight:600}
+#content{flex:1;overflow-y:auto;padding:24px}
+
+/* Login */
+#login-screen{display:flex;align-items:center;justify-content:center;height:100vh;background:var(--bg)}
+.login-box{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:40px;width:380px}
+.login-box h2{text-align:center;margin-bottom:8px;font-size:1.4rem}
+.login-box p{text-align:center;color:var(--muted);font-size:.8rem;margin-bottom:24px}
+
+/* Forms */
+.form-group{margin-bottom:14px}
+label{display:block;font-size:.8rem;color:var(--muted);margin-bottom:5px}
+input,select,textarea{width:100%;padding:9px 12px;background:#0f172a;border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:.875rem;outline:none;transition:border .15s}
+input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+textarea{resize:vertical;min-height:80px}
+select option{background:#0f172a}
+
+/* Buttons */
+.btn{padding:9px 18px;border:none;border-radius:6px;cursor:pointer;font-size:.875rem;font-weight:600;transition:opacity .15s;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{opacity:.85}
+.btn:active{opacity:.7}
+.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff}
+.btn-success{background:#15803d;color:#fff}
+.btn-warning{background:#b45309;color:#fff}
+.btn-danger{background:#991b1b;color:#fff}
+.btn-ghost{background:rgba(255,255,255,.08);color:var(--text)}
+.btn-sm{padding:5px 12px;font-size:.8rem}
+.btn-full{width:100%;justify-content:center}
+
+/* Cards / Metrics */
+.metrics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:24px}
+.metric-card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px;text-align:center}
+.metric-val{font-size:1.8rem;font-weight:700;color:var(--accent)}
+.metric-lbl{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:4px}
+
+/* Tables */
+.tbl-wrap{background:var(--panel);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:20px}
+.tbl-head{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+.tbl-head h3{font-size:.9rem;font-weight:600}
+table{width:100%;border-collapse:collapse}
+th{padding:10px 14px;text-align:left;font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);background:#0f172a}
+td{padding:10px 14px;font-size:.85rem;border-bottom:1px solid rgba(51,65,85,.5)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,.02)}
+
+/* Badges */
+.badge{display:inline-block;padding:2px 9px;border-radius:99px;font-size:.7rem;font-weight:600}
+.badge-hot{background:#7f1d1d;color:#fca5a5}
+.badge-warm{background:#78350f;color:#fcd34d}
+.badge-cold{background:#1e3a5f;color:#93c5fd}
+.badge-sent{background:#14532d;color:#86efac}
+.badge-draft{background:#1e293b;color:#94a3b8}
+.badge-opened{background:#1e3a5f;color:#93c5fd}
+.badge-replied{background:#3b0764;color:#d8b4fe}
+.badge-scheduled{background:#14532d;color:#86efac}
+.badge-completed{background:#14532d;color:#86efac}
+.badge-proposed{background:#78350f;color:#fcd34d}
+.badge-queued{background:#1e3a5f;color:#93c5fd}
+.badge-error{background:#7f1d1d;color:#fca5a5}
+
+/* Tabs */
+.tabs{display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:0}
+.tab{padding:8px 16px;cursor:pointer;color:var(--muted);font-size:.85rem;border-bottom:2px solid transparent;margin-bottom:-1px}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+
+/* Modal */
+.modal-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;align-items:center;justify-content:center}
+.modal-backdrop.open{display:flex}
+.modal{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:24px;width:100%;max-width:560px;max-height:85vh;overflow-y:auto}
+.modal h3{margin-bottom:16px;font-size:1rem}
+.modal-close{float:right;cursor:pointer;color:var(--muted);font-size:1.2rem}
+
+/* Search */
+.search-bar{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.search-bar input{flex:1;min-width:180px}
+
+/* Toast */
+#toast{position:fixed;bottom:24px;right:24px;z-index:200;display:flex;flex-direction:column;gap:8px}
+.toast-msg{padding:12px 18px;border-radius:8px;font-size:.85rem;font-weight:500;min-width:260px;box-shadow:0 4px 12px rgba(0,0,0,.4);animation:slide-in .25s ease}
+.toast-success{background:#14532d;color:#86efac;border:1px solid #22c55e}
+.toast-error{background:#7f1d1d;color:#fca5a5;border:1px solid #ef4444}
+.toast-info{background:#1e3a5f;color:#93c5fd;border:1px solid #3b82f6}
+@keyframes slide-in{from{transform:translateX(120%);opacity:0}to{transform:translateX(0);opacity:1}}
+
+/* Chat */
+#chat-msgs{height:400px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:12px;background:#0f172a;display:flex;flex-direction:column;gap:8px}
+.chat-user{align-self:flex-end;background:var(--accent2);color:#fff;padding:8px 12px;border-radius:12px 12px 2px 12px;max-width:75%;font-size:.875rem}
+.chat-bot{align-self:flex-start;background:var(--panel);color:var(--text);padding:8px 12px;border-radius:12px 12px 12px 2px;max-width:75%;font-size:.875rem;white-space:pre-wrap}
+
+/* Misc */
+.row{display:flex;gap:12px;flex-wrap:wrap}
+.col{flex:1;min-width:200px}
+.section{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:20px}
+.section h3{font-size:.9rem;font-weight:600;margin-bottom:14px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.empty{text-align:center;padding:32px;color:var(--muted);font-size:.875rem}
+.score-bar-wrap{height:8px;background:#1e293b;border-radius:4px;overflow:hidden;margin-top:4px}
+.score-bar{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--accent),var(--accent2))}
+.signal-bar{display:inline-block;font-family:monospace;letter-spacing:1px;font-size:.8rem}
+.divider{border:none;border-top:1px solid var(--border);margin:16px 0}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-box">
+    <h2>🤖 AI Sales Assistant</h2>
+    <p>Groq AI · Twilio SMS · Bland AI · Google Calendar</p>
+    <div class="form-group"><label>Email</label><input id="li-email" type="email" value="admin@salesai.com"></div>
+    <div class="form-group"><label>Password</label><input id="li-pass" type="password" value="Admin@123456"></div>
+    <button class="btn btn-primary btn-full" onclick="doLogin()">Login →</button>
+    <div style="text-align:center;margin-top:12px;font-size:.8rem;color:var(--muted)">
+      Don't have an account? <a href="#" onclick="showRegister()" style="color:var(--accent)">Register</a>
+    </div>
+  </div>
+</div>
+
+<!-- REGISTER MODAL -->
+<div class="modal-backdrop" id="reg-modal">
+  <div class="modal">
+    <h3>📝 Create Account <span class="modal-close" onclick="closeModal('reg-modal')">✕</span></h3>
+    <div class="form-group"><label>Full Name</label><input id="reg-name" placeholder="Your Name"></div>
+    <div class="form-group"><label>Email</label><input id="reg-email" type="email" placeholder="you@company.com"></div>
+    <div class="form-group"><label>Password</label><input id="reg-pass" type="password" placeholder="Min 6 chars"></div>
+    <div class="form-group"><label>Role</label>
+      <select id="reg-role"><option value="sales_rep">Sales Rep</option><option value="manager">Manager</option><option value="admin">Admin</option></select>
+    </div>
+    <button class="btn btn-primary btn-full" onclick="doRegister()">Create Account</button>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app" style="display:none">
+  <div id="sidebar">
+    <h2>🤖 AI Sales</h2>
+    <div id="user-info">Loading...</div>
+    <nav id="nav">
+      <div class="nav-item active" onclick="goto('dashboard')">📊 Dashboard</div>
+      <div class="nav-item" onclick="goto('companies')">🏢 Companies</div>
+      <div class="nav-item" onclick="goto('contacts')">👤 Contacts</div>
+      <div class="nav-item" onclick="goto('emails')">📧 Emails</div>
+      <div class="nav-item" onclick="goto('meetings')">📅 Meetings</div>
+      <div class="nav-item" onclick="goto('calls')">📞 Calls</div>
+      <div class="nav-item" onclick="goto('analytics')">📈 Analytics</div>
+      <div class="nav-item" onclick="goto('chat')">💬 Chat</div>
+      <div class="nav-item" onclick="goto('sms')">📱 SMS Logs</div>
+      <div class="nav-item" onclick="goto('integrations')">⚙️ Integrations</div>
+    </nav>
+    <div id="sys-status"><b>System Status</b></div>
+    <button id="logout-btn" onclick="logout()">🚪 Logout</button>
+  </div>
+  <div id="main">
+    <div id="topbar"><h1 id="page-title">Dashboard</h1><div id="topbar-actions"></div></div>
+    <div id="content"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<!-- MODALS -->
+<div class="modal-backdrop" id="company-modal">
+  <div class="modal">
+    <h3 id="co-modal-title">➕ Add Company <span class="modal-close" onclick="closeModal('company-modal')">✕</span></h3>
+    <input type="hidden" id="co-id">
+    <div class="row"><div class="col">
+      <div class="form-group"><label>Company Name *</label><input id="co-name" placeholder="Stripe"></div>
+      <div class="form-group"><label>Industry</label><input id="co-industry" placeholder="FinTech"></div>
+      <div class="form-group"><label>Employees</label><input id="co-emp" type="number" placeholder="500"></div>
+      <div class="form-group"><label>Annual Revenue ($)</label><input id="co-rev" type="number" placeholder="10000000"></div>
+    </div><div class="col">
+      <div class="form-group"><label>Website</label><input id="co-web" placeholder="stripe.com"></div>
+      <div class="form-group"><label>City</label><input id="co-city" placeholder="San Francisco"></div>
+      <div class="form-group"><label>Country</label><input id="co-country" placeholder="USA"></div>
+      <div class="form-group"><label>Status</label>
+        <select id="co-status"><option value="prospect">Prospect</option><option value="qualified">Qualified</option><option value="opportunity">Opportunity</option><option value="cold">Cold</option><option value="lost">Lost</option></select>
+      </div>
+    </div></div>
+    <div class="form-group"><label>Technologies (comma-separated)</label><input id="co-tech" placeholder="Python, React, AWS"></div>
+    <div class="form-group"><label>Description</label><textarea id="co-desc" rows="2"></textarea></div>
+    <div class="form-group"><label>LinkedIn URL</label><input id="co-linkedin" placeholder="https://linkedin.com/company/stripe"></div>
+    <button class="btn btn-primary btn-full" onclick="saveCompany()">Save Company</button>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="contact-modal">
+  <div class="modal">
+    <h3>👤 Add Contact <span class="modal-close" onclick="closeModal('contact-modal')">✕</span></h3>
+    <input type="hidden" id="ct-company-id">
+    <div class="row"><div class="col">
+      <div class="form-group"><label>First Name *</label><input id="ct-fn" placeholder="Alex"></div>
+      <div class="form-group"><label>Last Name</label><input id="ct-ln" placeholder="Johnson"></div>
+      <div class="form-group"><label>Email</label><input id="ct-email" type="email" placeholder="alex@company.com"></div>
+      <div class="form-group"><label>Phone</label><input id="ct-phone" placeholder="+14155550100"></div>
+    </div><div class="col">
+      <div class="form-group"><label>Title</label><input id="ct-title" placeholder="VP of Engineering"></div>
+      <div class="form-group"><label>Department</label><input id="ct-dept" placeholder="Engineering"></div>
+      <div class="form-group"><label>Seniority</label>
+        <select id="ct-sen"><option value="individual">Individual</option><option value="manager">Manager</option><option value="director">Director</option><option value="vp">VP</option><option value="c_suite">C-Suite</option></select>
+      </div>
+      <div class="form-group" style="padding-top:20px"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="ct-dm"> Decision Maker</label></div>
+    </div></div>
+    <button class="btn btn-primary btn-full" onclick="saveContact()">Add Contact</button>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="email-modal">
+  <div class="modal">
+    <h3>📧 Generate AI Email <span class="modal-close" onclick="closeModal('email-modal')">✕</span></h3>
+    <input type="hidden" id="em-company-id">
+    <div class="form-group"><label>Email Type</label>
+      <select id="em-type"><option value="cold">Cold Outreach</option><option value="follow_up">Follow Up</option><option value="meeting_request">Meeting Request</option></select>
+    </div>
+    <div class="form-group"><label>Custom Instructions (optional)</label><textarea id="em-custom" placeholder="Focus on their recent funding round..."></textarea></div>
+    <button class="btn btn-primary btn-full" onclick="genEmail()">🤖 Generate Email</button>
+    <div id="email-preview" style="display:none;margin-top:16px">
+      <div class="form-group"><label>Subject</label><input id="em-subject"></div>
+      <div class="form-group"><label>Body</label><textarea id="em-body" rows="8"></textarea></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-success" onclick="sendGenEmail()">📤 Send Now</button>
+        <button class="btn btn-ghost" onclick="saveDraftEmail()">💾 Save Draft</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="meeting-modal">
+  <div class="modal">
+    <h3>📅 Schedule Meeting <span class="modal-close" onclick="closeModal('meeting-modal')">✕</span></h3>
+    <input type="hidden" id="mtg-company-id">
+    <div class="form-group"><label>Title *</label><input id="mtg-title" placeholder="Discovery Call"></div>
+    <div class="form-group"><label>Type</label>
+      <select id="mtg-type"><option value="discovery">Discovery</option><option value="demo">Demo</option><option value="follow_up">Follow Up</option><option value="negotiation">Negotiation</option></select>
+    </div>
+    <div class="row"><div class="col">
+      <div class="form-group"><label>Date</label><input id="mtg-date" type="date"></div>
+    </div><div class="col">
+      <div class="form-group"><label>Time (UTC)</label><input id="mtg-time" type="time" value="10:00"></div>
+    </div></div>
+    <div class="form-group"><label>Duration (minutes)</label><input id="mtg-dur" type="number" value="30"></div>
+    <div class="form-group"><label>Description</label><textarea id="mtg-desc" rows="2"></textarea></div>
+    <button class="btn btn-primary btn-full" onclick="saveMeeting()">📅 Schedule + Set SMS Reminders</button>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="call-modal">
+  <div class="modal">
+    <h3>📞 Make AI Call <span class="modal-close" onclick="closeModal('call-modal')">✕</span></h3>
+    <input type="hidden" id="call-company-id">
+    <div class="form-group"><label>Phone Number *</label><input id="call-phone" placeholder="+14155550100"></div>
+    <div class="form-group"><label>Objective</label>
+      <select id="call-obj"><option value="qualify">Qualify</option><option value="demo">Book Demo</option><option value="follow_up">Follow Up</option><option value="close">Close</option><option value="feedback">Get Feedback</option></select>
+    </div>
+    <div class="form-group"><label>AI Voice</label>
+      <select id="call-voice"><option value="nat">Nat (default)</option><option value="tanya">Tanya</option><option value="ryan">Ryan</option><option value="evelyn">Evelyn</option></select>
+    </div>
+    <div class="form-group"><label>Custom Script (leave blank to AI-generate)</label><textarea id="call-script" rows="4"></textarea></div>
+    <button class="btn btn-primary btn-full" onclick="makeCall()">📞 Initiate AI Call</button>
+  </div>
+</div>
+
+<script>
+/* ════════════════════════════════════════════════════════════
+   STATE & CONSTANTS
+════════════════════════════════════════════════════════════ */
+const BASE = '/api';
+let TOKEN = localStorage.getItem('sales_token') || '';
+let USER  = JSON.parse(localStorage.getItem('sales_user') || 'null');
+let PAGE  = 'dashboard';
+let _lastEmailId = null;
+let _genEmailData = null;
+
+/* ════════════════════════════════════════════════════════════
+   API HELPER
+════════════════════════════════════════════════════════════ */
+async function api(method, path, body=null, isFile=false) {
+  const opts = { method, headers: {} };
+  if (TOKEN) opts.headers['Authorization'] = 'Bearer ' + TOKEN;
+  if (body && !isFile) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+  if (body && isFile) opts.body = body;
+  try {
+    const r = await fetch(BASE + path, opts);
+    const data = await r.json().catch(() => ({}));
+    if (r.status === 401) { logout(); return null; }
+    if (!r.ok || data.ok === false) {
+      toast(data.error || data.detail || 'Error ' + r.status, 'error');
+      return null;
+    }
+    return data.data !== undefined ? data.data : data;
+  } catch(e) {
+    toast('Network error — is the server running?', 'error');
+    return null;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
+   AUTH
+════════════════════════════════════════════════════════════ */
+async function doLogin() {
+  const email = v('li-email'), pass = v('li-pass');
+  if (!email || !pass) return toast('Enter email and password','error');
+  const d = await api('POST', '/auth/login', { email, password: pass });
+  if (!d) return;
+  TOKEN = d.token; USER = d.user;
+  localStorage.setItem('sales_token', TOKEN);
+  localStorage.setItem('sales_user', JSON.stringify(USER));
+  showApp();
+}
+
+async function doRegister() {
+  const name=v('reg-name'),email=v('reg-email'),pass=v('reg-pass'),role=v('reg-role');
+  if (!name||!email||!pass) return toast('All fields required','error');
+  const d = await api('POST', '/auth/register', {full_name:name,email,password:pass,role});
+  if (!d) return;
+  TOKEN = d.token; USER = d.user;
+  localStorage.setItem('sales_token', TOKEN);
+  localStorage.setItem('sales_user', JSON.stringify(USER));
+  closeModal('reg-modal');
+  showApp();
+}
+
+function showRegister() { openModal('reg-modal'); }
+
+function logout() {
+  TOKEN=''; USER=null;
+  localStorage.removeItem('sales_token');
+  localStorage.removeItem('sales_user');
+  document.getElementById('app').style.display='none';
+  document.getElementById('login-screen').style.display='flex';
+}
+
+function showApp() {
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app').style.display='flex';
+  document.getElementById('user-info').textContent = USER ? `${USER.full_name} · ${USER.role}` : '';
+  loadStatus();
+  goto('dashboard');
+}
+
+/* ════════════════════════════════════════════════════════════
+   NAVIGATION
+════════════════════════════════════════════════════════════ */
+const PAGE_TITLES = {dashboard:'📊 Dashboard',companies:'🏢 Companies',contacts:'👤 Contacts',
+  emails:'📧 Emails',meetings:'📅 Meetings',calls:'📞 AI Calls',analytics:'📈 Analytics',
+  chat:'💬 AI Chat',sms:'📱 SMS Logs',integrations:'⚙️ Integrations'};
+
+function goto(page) {
+  PAGE = page;
+  document.querySelectorAll('.nav-item').forEach((el,i) => {
+    const pages = ['dashboard','companies','contacts','emails','meetings','calls','analytics','chat','sms','integrations'];
+    el.classList.toggle('active', pages[i] === page);
+  });
+  document.getElementById('page-title').textContent = PAGE_TITLES[page] || page;
+  document.getElementById('topbar-actions').innerHTML = '';
+  const fn = PAGES[page];
+  if (fn) fn();
+}
+
+/* ════════════════════════════════════════════════════════════
+   PAGES
+════════════════════════════════════════════════════════════ */
+const PAGES = { dashboard, companies, contacts, emails, meetings, calls, analytics, chat, sms, integrations };
+
+async function dashboard() {
+  const [sum, cos, mtgs] = await Promise.all([
+    api('GET','/analytics/summary'),
+    api('GET','/companies?limit=5'),
+    api('GET','/meetings?status=scheduled'),
+  ]);
+  if (!sum) return;
+
+  set('content', `
+    <div class="metrics-grid">
+      ${metric('🏢 Companies',sum.total_companies)}
+      ${metric('🔥 Hot Leads',sum.hot_leads,'var(--hot)')}
+      ${metric('🟡 Warm Leads',sum.warm_leads,'var(--warm)')}
+      ${metric('📧 Emails Sent',sum.emails_sent)}
+      ${metric('📭 Open Rate',sum.open_rate+'%')}
+      ${metric('📅 Meetings',sum.meetings_scheduled,'var(--green)')}
+      ${metric('📞 Calls',sum.total_calls)}
+      ${metric('💰 Pipeline','$'+fmt(sum.revenue_pipeline),'var(--green)')}
+    </div>
+    <div class="row">
+      <div class="col tbl-wrap">
+        <div class="tbl-head"><h3>🔥 Top Hot Leads</h3><button class="btn btn-sm btn-ghost" onclick="goto('companies')">View All →</button></div>
+        <table><thead><tr><th>Company</th><th>Score</th><th>Industry</th><th>Status</th></tr></thead>
+        <tbody>${(cos||[]).map(c=>`<tr>
+          <td><b>${esc(c.name)}</b></td>
+          <td>${scoreBadge(c.lead_score)}</td>
+          <td>${esc(c.industry||'—')}</td>
+          <td><span class="badge badge-${c.status}">${c.status}</span></td>
+        </tr>`).join('')}</tbody></table>
+      </div>
+      <div class="col tbl-wrap">
+        <div class="tbl-head"><h3>📅 Upcoming Meetings</h3><button class="btn btn-sm btn-ghost" onclick="goto('meetings')">View All →</button></div>
+        <table><thead><tr><th>Title</th><th>Company</th><th>When</th></tr></thead>
+        <tbody>${(mtgs||[]).slice(0,6).map(m=>`<tr>
+          <td><b>${esc(m.title)}</b></td>
+          <td>${esc(m.company_name||'—')}</td>
+          <td style="font-size:.8rem;color:var(--muted)">${fmtDt(m.scheduled_at)}</td>
+        </tr>`).join('')}</tbody></table>
+      </div>
+    </div>
+  `);
+}
+
+async function companies() {
+  document.getElementById('topbar-actions').innerHTML =
+    '<button class="btn btn-primary btn-sm" onclick="openCompanyModal()">➕ Add Company</button>';
+  await renderCompanies();
+}
+
+async function renderCompanies(search='',status='') {
+  let url = `/companies?limit=200`;
+  if (search) url += `&search=${encodeURIComponent(search)}`;
+  if (status) url += `&status=${encodeURIComponent(status)}`;
+  const cos = await api('GET', url);
+  if (!cos) return;
+
+  set('content',`
+    <div class="search-bar">
+      <input id="co-search" placeholder="🔍 Search companies..." onkeyup="debounce(()=>renderCompanies(v('co-search'),v('co-sf')),400)" value="${esc(search)}">
+      <select id="co-sf" onchange="renderCompanies(v('co-search'),this.value)">
+        <option value="">All Statuses</option>
+        ${['prospect','qualified','opportunity','cold','lost'].map(s=>`<option value="${s}" ${s===status?'selected':''}>${s}</option>`).join('')}
+      </select>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+        <input type="file" id="csv-file" accept=".csv" style="display:none" onchange="uploadCSV(this)">
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('csv-file').click()">📤 Import CSV</button>
+      </label>
+    </div>
+    <div class="tbl-wrap">
+      <div class="tbl-head"><h3>${cos.length} Companies</h3></div>
+      <table><thead><tr><th>Company</th><th>Industry</th><th>Score</th><th>Status</th><th>Employees</th><th>Revenue</th><th>Actions</th></tr></thead>
+      <tbody>${cos.map(c=>`<tr>
+        <td><b>${esc(c.name)}</b>${c.ai_summary?`<div style="font-size:.75rem;color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.ai_summary)}</div>`:''}</td>
+        <td>${esc(c.industry||'—')}</td>
+        <td>${scoreBadge(c.lead_score)}</td>
+        <td><span class="badge badge-${c.status||'prospect'}">${c.status||'prospect'}</span></td>
+        <td>${c.employee_count?fmt(c.employee_count):'—'}</td>
+        <td>${c.annual_revenue?'$'+fmtM(c.annual_revenue):'—'}</td>
+        <td style="white-space:nowrap">
+          <button class="btn btn-sm btn-ghost" onclick="viewCompany(${c.id})">View</button>
+          <button class="btn btn-sm btn-ghost" onclick="scoreCompany(${c.id})">Score</button>
+          <button class="btn btn-sm btn-ghost" onclick="openEmailModal(${c.id})">Email</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteCompany(${c.id},'${esc(c.name)}')">Del</button>
+        </td>
+      </tr>`).join('')}</tbody></table>
+    </div>
+  `);
+}
+
+async function viewCompany(cid) {
+  const co = await api('GET', `/companies/${cid}`);
+  if (!co) return;
+
+  const techStr = Array.isArray(co.technologies) ? co.technologies.join(', ')
+    : (co.technologies ? JSON.parse(co.technologies).join(', ') : '—');
+
+  set('content',`
+    <button class="btn btn-ghost btn-sm" onclick="goto('companies')" style="margin-bottom:16px">← Back</button>
+    <div class="section">
+      <div class="row" style="align-items:flex-start">
+        <div class="col">
+          <h2 style="font-size:1.3rem;margin-bottom:8px">${esc(co.name)} ${scoreBadge(co.lead_score)}</h2>
+          <p style="color:var(--muted);font-size:.85rem;margin-bottom:12px">${esc(co.description||'')}</p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:.85rem">
+            <div>🏭 <b>Industry:</b> ${esc(co.industry||'—')}</div>
+            <div>📍 <b>Location:</b> ${esc((co.city||'')+' '+(co.country||''))}</div>
+            <div>👥 <b>Employees:</b> ${co.employee_count?fmt(co.employee_count):'—'}</div>
+            <div>💰 <b>Revenue:</b> ${co.annual_revenue?'$'+fmtM(co.annual_revenue):'—'}</div>
+            <div>🌐 <b>Website:</b> ${co.website?`<a href="https://${co.website}" target="_blank" style="color:var(--accent)">${co.website}</a>`:'—'}</div>
+            <div>📊 <b>Status:</b> <span class="badge badge-${co.status||'prospect'}">${co.status||'prospect'}</span></div>
+            <div>💻 <b>Tech:</b> ${techStr}</div>
+          </div>
+          ${co.ai_summary?`<div style="margin-top:12px;padding:10px;background:#0f172a;border-radius:6px;font-size:.85rem">🤖 ${esc(co.ai_summary)}</div>`:''}
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;min-width:160px">
+          <button class="btn btn-primary btn-sm" onclick="scoreCompany(${cid},true)">🎯 Score Lead</button>
+          <button class="btn btn-ghost btn-sm" onclick="aiSummary(${cid})">🤖 AI Summary</button>
+          <button class="btn btn-ghost btn-sm" onclick="analyzeSignals(${cid})">📡 Buying Signals</button>
+          <button class="btn btn-ghost btn-sm" onclick="openEmailModal(${cid})">📧 Generate Email</button>
+          <button class="btn btn-ghost btn-sm" onclick="openMeetingModal(${cid})">📅 Schedule Meeting</button>
+          <button class="btn btn-ghost btn-sm" onclick="openCallModal(${cid})">📞 AI Call</button>
+          <button class="btn btn-ghost btn-sm" onclick="openContactModal(${cid})">👤 Add Contact</button>
+          <button class="btn btn-ghost btn-sm" onclick="editCompanyModal(${cid})">✏️ Edit</button>
+        </div>
+      </div>
+    </div>
+    ${companyTabs(co)}
+  `);
+}
+
+function companyTabs(co) {
+  const tabs = ['Contacts','Emails','Meetings','Calls','Signals','Scores'];
+  return `
+    <div class="tabs">${tabs.map((t,i)=>`<div class="tab ${i===0?'active':''}" onclick="switchTab(this,'co-tab-${i}')">${t}</div>`).join('')}</div>
+    <div id="co-tab-0" class="tab-panel active">
+      ${co.contacts.length ? `<table><thead><tr><th>Name</th><th>Title</th><th>Email</th><th>Phone</th><th>Seniority</th><th>DM?</th></tr></thead>
+      <tbody>${co.contacts.map(c=>`<tr>
+        <td><b>${esc(c.first_name)} ${esc(c.last_name||'')}</b></td>
+        <td>${esc(c.title||'—')}</td><td>${esc(c.email||'—')}</td><td>${esc(c.phone||'—')}</td>
+        <td>${c.seniority_level||'—'}</td><td>${c.is_decision_maker?'✅':''}</td>
+      </tr>`).join('')}</tbody></table>` : '<div class="empty">No contacts — add one above</div>'}
+    </div>
+    <div id="co-tab-1" class="tab-panel">
+      ${co.emails.length ? `<table><thead><tr><th>Subject</th><th>Type</th><th>Status</th><th>Recipient</th><th>Actions</th></tr></thead>
+      <tbody>${co.emails.map(e=>`<tr>
+        <td>${esc(e.subject)}</td>
+        <td>${(e.email_type||'').replace(/_/g,' ')}</td>
+        <td><span class="badge badge-${e.status}">${e.status}</span></td>
+        <td>${esc(e.recipient_email||'')}</td>
+        <td>${e.status==='draft'?`<button class="btn btn-sm btn-success" onclick="sendEmail(${e.id})">Send</button>`:'—'}</td>
+      </tr>`).join('')}</tbody></table>` : '<div class="empty">No emails yet</div>'}
+    </div>
+    <div id="co-tab-2" class="tab-panel">
+      ${co.meetings.length ? `<table><thead><tr><th>Title</th><th>Type</th><th>When</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody>${co.meetings.map(m=>`<tr>
+        <td><b>${esc(m.title)}</b></td>
+        <td>${(m.meeting_type||'').replace(/_/g,' ')}</td>
+        <td style="font-size:.8rem">${fmtDt(m.scheduled_at)}</td>
+        <td><span class="badge badge-${m.status||'proposed'}">${m.status||'proposed'}</span></td>
+        <td style="white-space:nowrap">
+          ${m.meeting_link?`<a href="${m.meeting_link}" target="_blank" class="btn btn-sm btn-ghost">📹 Join</a>`:''}
+          ${m.status!=='completed'?`<button class="btn btn-sm btn-success" onclick="completeMeeting(${m.id},${co.id})">Done</button>`:''}
+          <button class="btn btn-sm btn-ghost" onclick="addToCalendar(${m.id},${co.id})">📅 Cal</button>
+        </td>
+      </tr>`).join('')}</tbody></table>` : '<div class="empty">No meetings yet</div>'}
+    </div>
+    <div id="co-tab-3" class="tab-panel">
+      ${co.calls.length ? `<table><thead><tr><th>Phone</th><th>Objective</th><th>Status</th><th>Duration</th><th>Summary</th></tr></thead>
+      <tbody>${co.calls.map(c=>`<tr>
+        <td>${esc(c.phone_number)}</td>
+        <td>${c.objective||'—'}</td>
+        <td><span class="badge badge-${c.status||'queued'}">${c.status||'queued'}</span></td>
+        <td>${c.duration_seconds?c.duration_seconds+'s':'—'}</td>
+        <td style="font-size:.8rem;max-width:200px">${esc((c.summary||'').slice(0,80))}</td>
+      </tr>`).join('')}</tbody></table>` : '<div class="empty">No calls yet</div>'}
+    </div>
+    <div id="co-tab-4" class="tab-panel">
+      ${co.buying_signals.length ? co.buying_signals.map(s=>`
+        <div style="padding:10px 0;border-bottom:1px solid var(--border)">
+          <b>${esc(s.signal_name)}</b>
+          <span class="signal-bar" style="margin-left:12px;color:var(--accent)">${'█'.repeat(s.strength||5)}${'░'.repeat(10-(s.strength||5))}</span>
+          <span style="font-size:.75rem;color:var(--muted);margin-left:6px">${s.strength}/10</span>
+          <div style="font-size:.8rem;color:var(--muted);margin-top:3px">${esc(s.signal_description||'')}</div>
+        </div>`).join('')
+      : '<div class="empty">Click "Buying Signals" to analyse</div>'}
+    </div>
+    <div id="co-tab-5" class="tab-panel">
+      ${co.lead_score_details ? `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          ${[['Revenue',co.lead_score_details.revenue_score],['Employees',co.lead_score_details.employee_score],
+             ['Industry',co.lead_score_details.industry_score],['Buying Signals',co.lead_score_details.buying_signal_score],
+             ['Seniority',co.lead_score_details.department_signal_score],['Email Activity',co.lead_score_details.email_activity_score]
+            ].map(([lbl,val])=>`<div>
+            <div style="display:flex;justify-content:space-between;font-size:.8rem"><span>${lbl}</span><span>${val}/100</span></div>
+            <div class="score-bar-wrap"><div class="score-bar" style="width:${val}%"></div></div>
+          </div>`).join('')}
+        </div>
+        <div style="margin-top:16px;text-align:center;font-size:1.1rem">
+          Total: <b style="color:var(--accent)">${co.lead_score_details.total_score}/100</b>
+          — Tier: <span class="badge badge-${co.lead_score_details.tier}">${co.lead_score_details.tier}</span>
+        </div>` : '<div class="empty">Run "Score Lead" to see breakdown</div>'}
+    </div>
+  `;
+}
+
+async function contacts() {
+  const data = await api('GET','/contacts');
+  if (!data) return;
+  set('content',`
+    <div class="tbl-wrap">
+      <div class="tbl-head"><h3>${data.length} Contacts</h3></div>
+      <table><thead><tr><th>Name</th><th>Title</th><th>Email</th><th>Phone</th><th>Dept</th><th>Seniority</th><th>DM</th></tr></thead>
+      <tbody>${data.map(c=>`<tr>
+        <td><b>${esc(c.first_name)} ${esc(c.last_name||'')}</b></td>
+        <td>${esc(c.title||'—')}</td>
+        <td>${esc(c.email||'—')}</td>
+        <td>${esc(c.phone||'—')}</td>
+        <td>${esc(c.department||'—')}</td>
+        <td>${c.seniority_level||'—'}</td>
+        <td>${c.is_decision_maker?'✅':''}</td>
+      </tr>`).join('')}</tbody></table>
+    </div>
+  `);
+}
+
+async function emails() {
+  document.getElementById('topbar-actions').innerHTML =
+    '<button class="btn btn-primary btn-sm" onclick="openEmailModal()">🤖 Generate Email</button>';
+  const [data,cos] = await Promise.all([api('GET','/emails'),api('GET','/companies?limit=200')]);
+  if (!data) return;
+  set('content',`
+    <div class="tbl-wrap">
+      <div class="tbl-head">
+        <h3>${data.length} Emails</h3>
+        <div style="display:flex;gap:8px">
+          <select onchange="filterEmails(this.value,'')">
+            <option value="">All Statuses</option>
+            ${['draft','sent','opened','replied'].map(s=>`<option value="${s}">${s}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <table><thead><tr><th>Subject</th><th>Type</th><th>Status</th><th>Recipient</th><th>AI Model</th><th>Created</th><th>Actions</th></tr></thead>
+      <tbody>${data.map(e=>`<tr>
+        <td style="max-width:200px"><b>${esc(e.subject)}</b></td>
+        <td>${(e.email_type||'').replace(/_/g,' ')}</td>
+        <td><span class="badge badge-${e.status}">${e.status}</span></td>
+        <td>${esc(e.recipient_email||'')}</td>
+        <td><span style="font-size:.75rem;color:var(--muted)">${e.ai_model_used||'—'}</span></td>
+        <td style="font-size:.75rem;color:var(--muted)">${fmtDt(e.created_at)}</td>
+        <td>${e.status==='draft'?`<button class="btn btn-sm btn-success" onclick="sendEmail(${e.id})">📤 Send</button>`:'—'}</td>
+      </tr>`).join('')}</tbody></table>
+    </div>
+  `);
+}
+
+async function filterEmails(status) {
+  const url = status ? `/emails?status=${status}` : '/emails';
+  const data = await api('GET', url);
+  if (!data) return;
+  document.querySelector('tbody').innerHTML = data.map(e=>`<tr>
+    <td style="max-width:200px"><b>${esc(e.subject)}</b></td>
+    <td>${(e.email_type||'').replace(/_/g,' ')}</td>
+    <td><span class="badge badge-${e.status}">${e.status}</span></td>
+    <td>${esc(e.recipient_email||'')}</td>
+    <td><span style="font-size:.75rem;color:var(--muted)">${e.ai_model_used||'—'}</span></td>
+    <td style="font-size:.75rem;color:var(--muted)">${fmtDt(e.created_at)}</td>
+    <td>${e.status==='draft'?`<button class="btn btn-sm btn-success" onclick="sendEmail(${e.id})">📤 Send</button>`:'—'}</td>
+  </tr>`).join('');
+}
+
+async function meetings() {
+  document.getElementById('topbar-actions').innerHTML =
+    '<button class="btn btn-primary btn-sm" onclick="openMeetingModal()">➕ Schedule Meeting</button>';
+  const data = await api('GET','/meetings');
+  if (!data) return;
+  set('content',`
+    <div class="tbl-wrap">
+      <div class="tbl-head"><h3>${data.length} Meetings</h3></div>
+      <table><thead><tr><th>Title</th><th>Company</th><th>Type</th><th>Scheduled</th><th>Duration</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody>${data.map(m=>`<tr>
+        <td><b>${esc(m.title)}</b></td>
+        <td>${esc(m.company_name||'—')}</td>
+        <td>${(m.meeting_type||'').replace(/_/g,' ')}</td>
+        <td>${fmtDt(m.scheduled_at)}</td>
+        <td>${m.duration_minutes||30}m</td>
+        <td><span class="badge badge-${m.status||'proposed'}">${m.status||'proposed'}</span></td>
+        <td style="white-space:nowrap">
+          ${m.meeting_link?`<a href="${m.meeting_link}" target="_blank" class="btn btn-sm btn-ghost">📹</a>`:''}
+          ${m.status!=='completed'?`<button class="btn btn-sm btn-success" onclick="completeMeeting(${m.id},${m.company_id})">✅</button>`:''}
+          <button class="btn btn-sm btn-ghost" onclick="addToCalendar(${m.id},${m.company_id})">📅</button>
+        </td>
+      </tr>`).join('')}</tbody></table>
+    </div>
+  `);
+}
+
+async function calls() {
+  document.getElementById('topbar-actions').innerHTML =
+    '<button class="btn btn-primary btn-sm" onclick="openCallModal()">📞 New AI Call</button>';
+  const data = await api('GET','/calls');
+  if (!data) return;
+  set('content',`
+    <div style="padding:12px;background:#1e3a5f;border-radius:8px;margin-bottom:16px;font-size:.85rem">
+      📞 <b>Bland AI Phone Calls</b> — The AI calls prospects and has real conversations. Requires BLAND_API_KEY in .env
+    </div>
+    <div class="tbl-wrap">
+      <div class="tbl-head"><h3>${data.length} Calls</h3></div>
+      <table><thead><tr><th>Company</th><th>Phone</th><th>Objective</th><th>Status</th><th>Duration</th><th>Summary</th><th>Actions</th></tr></thead>
+      <tbody>${data.map(c=>`<tr>
+        <td>${esc(c.company_name||'—')}</td>
+        <td>${esc(c.phone_number)}</td>
+        <td>${c.objective||'—'}</td>
+        <td><span class="badge badge-${c.status||'queued'}">${c.status||'queued'}</span></td>
+        <td>${c.duration_seconds?c.duration_seconds+'s':'—'}</td>
+        <td style="font-size:.8rem;max-width:150px">${esc((c.summary||'').slice(0,60))}</td>
+        <td>
+          ${c.recording_url?`<a href="${c.recording_url}" target="_blank" class="btn btn-sm btn-ghost">🎧</a>`:''}
+          ${c.status==='queued'?`<button class="btn btn-sm btn-ghost" onclick="syncCall(${c.id})">🔄</button>`:''}
+        </td>
+      </tr>`).join('')}</tbody></table>
+    </div>
+  `);
+}
+
+async function analytics() {
+  const [sum,ea,ld,pipe] = await Promise.all([
+    api('GET','/analytics/summary'),
+    api('GET','/analytics/email-activity'),
+    api('GET','/analytics/lead-distribution'),
+    api('GET','/analytics/pipeline'),
+  ]);
+  if (!sum) return;
+  set('content',`
+    <div class="metrics-grid">
+      ${metric('Total Companies',sum.total_companies)}
+      ${metric('🔥 Hot Leads',sum.hot_leads,'var(--hot)')}
+      ${metric('🟡 Warm Leads',sum.warm_leads,'var(--warm)')}
+      ${metric('❄️ Cold Leads',sum.cold_leads,'var(--cold)')}
+      ${metric('Emails Sent',sum.emails_sent)}
+      ${metric('Open Rate',sum.open_rate+'%')}
+      ${metric('Reply Rate',sum.reply_rate+'%')}
+      ${metric('💰 Pipeline','$'+fmt(sum.revenue_pipeline),'var(--green)')}
+    </div>
+    <div class="row">
+      <div class="col section">
+        <h3>📧 Email Activity</h3>
+        ${miniChart(ea||[],'sent','#3b82f6')}
+      </div>
+      <div class="col section">
+        <h3>🏭 Lead Distribution</h3>
+        <table><thead><tr><th>Industry</th><th>Count</th><th>Avg Score</th></tr></thead>
+        <tbody>${(ld||[]).map(r=>`<tr><td>${esc(r.industry)}</td><td>${r.count}</td><td>${r.avg_score}</td></tr>`).join('')}</tbody></table>
+      </div>
+    </div>
+    <div class="section">
+      <h3>💰 Revenue Pipeline</h3>
+      <table><thead><tr><th>Company</th><th>Score</th><th>Potential Revenue</th><th>Status</th></tr></thead>
+      <tbody>${(pipe||[]).map(c=>`<tr>
+        <td><b>${esc(c.name)}</b></td>
+        <td>${scoreBadge(c.lead_score)}</td>
+        <td style="color:var(--green)">$${fmt(c.potential_revenue)}</td>
+        <td><span class="badge badge-${c.status}">${c.status}</span></td>
+      </tr>`).join('')}</tbody></table>
+    </div>
+  `);
+}
+
+async function chat() {
+  const msgs = await api('GET','/chat');
+  set('content',`
+    <div class="section" style="max-width:700px;margin:0 auto">
+      <div id="chat-msgs">${(msgs||[]).map(m=>
+        m.sender==='user'
+          ? `<div class="chat-user">👤 ${esc(m.message)}</div>`
+          : `<div class="chat-bot">🤖 ${esc(m.message)}</div>`
+      ).join('')}</div>
+      <div style="display:flex;gap:8px">
+        <input id="chat-input" placeholder="Ask anything… try 'show leads', 'analytics', 'pipeline'" onkeydown="if(event.key==='Enter')sendChat()" style="flex:1">
+        <button class="btn btn-primary" onclick="sendChat()">Send →</button>
+        <button class="btn btn-ghost" onclick="clearChat()">🗑</button>
+      </div>
+      <div style="margin-top:10px;font-size:.75rem;color:var(--muted)">
+        Commands: <code>show leads</code> · <code>analytics</code> · <code>pipeline</code> · <code>daily report</code> · <code>help</code>
+      </div>
+    </div>
+  `);
+  const el = document.getElementById('chat-msgs');
+  if (el) el.scrollTop = el.scrollHeight;
+}
+
+async function sendChat() {
+  const msg = (document.getElementById('chat-input').value || '').trim();
+  if (!msg) return;
+  document.getElementById('chat-input').value = '';
+  const box = document.getElementById('chat-msgs');
+  if (box) box.innerHTML += `<div class="chat-user">👤 ${esc(msg)}</div><div class="chat-bot" id="typing">🤖 ...</div>`;
+  if (box) box.scrollTop = box.scrollHeight;
+  const r = await api('POST','/chat',{message:msg});
+  const typing = document.getElementById('typing');
+  if (typing && r) { typing.textContent = '🤖 ' + r.reply; typing.id=''; }
+  if (typing && !r) typing.textContent = '🤖 Error — try again.';
+  if (box) box.scrollTop = box.scrollHeight;
+}
+
+async function clearChat() {
+  await api('DELETE','/chat');
+  chat();
+}
+
+async function sms() {
+  const data = await api('GET','/sms-logs?limit=100');
+  if (!data) return;
+  set('content',`
+    <div style="padding:12px;background:#1e3a5f;border-radius:8px;margin-bottom:16px;font-size:.85rem">
+      📱 <b>Twilio SMS Notifications</b> — All 12 event types logged here. Set TWILIO_* variables in .env to enable.
+    </div>
+    <div class="tbl-wrap">
+      <div class="tbl-head"><h3>${data.length} SMS Notifications</h3></div>
+      <table><thead><tr><th>Event</th><th>To</th><th>Message Preview</th><th>Status</th><th>Time</th></tr></thead>
+      <tbody>${data.length ? data.map(l=>`<tr>
+        <td><b>${esc(l.event_type||'—')}</b></td>
+        <td>${esc(l.to_number)}</td>
+        <td style="font-size:.8rem;max-width:250px">${esc((l.body||'').slice(0,80))}</td>
+        <td><span class="badge badge-${l.status==='sent'?'sent':'error'}">${l.status}</span></td>
+        <td style="font-size:.75rem;color:var(--muted)">${fmtDt(l.created_at)}</td>
+      </tr>`).join('') : '<tr><td colspan="5" class="empty">No SMS sent yet — configure Twilio in Integrations</td></tr>'}</tbody></table>
+    </div>
+    <div class="section">
+      <h3>📋 SMS Event Types (12 total)</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:.85rem">
+        ${[['🏢 company_added','New company added'],['🔥 hot_lead','Lead score ≥ 80'],
+           ['📧 email_generated','AI email created'],['✅ email_sent','Email sent via Gmail'],
+           ['📅 meeting_scheduled','Meeting created'],['✅ meeting_completed','Meeting completed'],
+           ['📞 call_initiated','Bland AI call'],['📤 csv_import','CSV import done'],
+           ['📊 daily_report','Daily at 6PM UTC'],['⏰ meeting_reminder_24h','24h before'],
+           ['⏰ meeting_reminder_1h','1h before'],['⏰ meeting_reminder_10min','10min before']
+          ].map(([k,v])=>`<div style="padding:6px;background:#0f172a;border-radius:4px"><b>${k}</b> — ${v}</div>`).join('')}
+      </div>
+    </div>
+  `);
+}
+
+async function integrations() {
+  const st = await api('GET','/integrations/status');
+  if (!st) return;
+
+  const badge = (connected) =>
+    connected ? '<span style="color:var(--green)">🟢 Connected</span>'
+              : '<span style="color:var(--red)">🔴 Not configured</span>';
+
+  set('content',`
+    <div class="row">
+      <div class="col">
+        <div class="section">
+          <h3>🤖 Groq AI</h3>
+          <p>${badge(st.groq.connected)}</p>
+          <p style="font-size:.8rem;color:var(--muted);margin-top:6px">Model: ${st.groq.model}</p>
+          <code style="display:block;background:#0f172a;padding:8px;border-radius:4px;margin-top:8px;font-size:.75rem">GROQ_API_KEY=gsk_...</code>
+          <a href="https://console.groq.com" target="_blank" style="color:var(--accent);font-size:.8rem">Get free key →</a>
+        </div>
+        <div class="section">
+          <h3>📧 Gmail SMTP</h3>
+          <p>${badge(st.gmail.connected)}</p>
+          ${st.gmail.email?`<p style="font-size:.8rem;color:var(--muted)">${st.gmail.email}</p>`:''}
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <button class="btn btn-sm btn-ghost" onclick="testGmail()">🔍 Test</button>
+            <button class="btn btn-sm btn-ghost" onclick="sendTestGmail()">📧 Send Test</button>
+          </div>
+          <code style="display:block;background:#0f172a;padding:8px;border-radius:4px;margin-top:8px;font-size:.75rem">GMAIL_SENDER_EMAIL=you@gmail.com<br>GMAIL_APP_PASSWORD=xxxx xxxx xxxx xxxx</code>
+          <a href="https://myaccount.google.com/apppasswords" target="_blank" style="color:var(--accent);font-size:.8rem">Create App Password →</a>
+        </div>
+        <div class="section">
+          <h3>📞 Bland AI Calls</h3>
+          <p>${badge(st.bland_ai.connected)}</p>
+          <button class="btn btn-sm btn-ghost" onclick="testBland()" style="margin-top:10px">🔍 Test</button>
+          <code style="display:block;background:#0f172a;padding:8px;border-radius:4px;margin-top:8px;font-size:.75rem">BLAND_API_KEY=org_...</code>
+          <a href="https://app.bland.ai" target="_blank" style="color:var(--accent);font-size:.8rem">Get key →</a>
+        </div>
+      </div>
+      <div class="col">
+        <div class="section">
+          <h3>📱 Twilio SMS (12 Events)</h3>
+          <p>${badge(st.twilio_sms.connected)}</p>
+          ${st.twilio_sms.from_number?`<p style="font-size:.8rem;color:var(--muted)">From: ${st.twilio_sms.from_number}</p>`:''}
+          ${st.twilio_sms.admin_number?`<p style="font-size:.8rem;color:var(--muted)">Admin: ${st.twilio_sms.admin_number}</p>`:''}
+          <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+            <input id="sms-test-num" placeholder="+14155550100" style="flex:1;min-width:150px">
+            <button class="btn btn-sm btn-ghost" onclick="testTwilio()">📱 Test SMS</button>
+          </div>
+          <button class="btn btn-sm btn-ghost" onclick="sendDailyReport()" style="margin-top:8px;width:100%">📊 Send Daily Report Now</button>
+          <code style="display:block;background:#0f172a;padding:8px;border-radius:4px;margin-top:8px;font-size:.75rem">TWILIO_ACCOUNT_SID=ACxx<br>TWILIO_AUTH_TOKEN=xxx<br>TWILIO_FROM_NUMBER=+1xxx<br>TWILIO_ADMIN_NUMBER=+1xxx</code>
+          <a href="https://console.twilio.com" target="_blank" style="color:var(--accent);font-size:.8rem">Twilio Console →</a>
+        </div>
+        <div class="section">
+          <h3>📅 Google Calendar</h3>
+          <p>${badge(st.google_calendar.connected)}</p>
+          ${!st.google_calendar.connected ? `
+            <button class="btn btn-sm btn-primary" onclick="connectGoogle()" style="margin-top:10px">🔗 Connect Google Calendar</button>
+          ` : `
+            <div style="display:flex;gap:8px;margin-top:10px">
+              <button class="btn btn-sm btn-ghost" onclick="disconnectGoogle()">🔌 Disconnect</button>
+            </div>
+          `}
+          <code style="display:block;background:#0f172a;padding:8px;border-radius:4px;margin-top:8px;font-size:.75rem">GOOGLE_CLIENT_ID=xxx<br>GOOGLE_CLIENT_SECRET=xxx</code>
+          <a href="https://console.cloud.google.com" target="_blank" style="color:var(--accent);font-size:.8rem">Google Cloud Console →</a>
+        </div>
+      </div>
+    </div>
+    <div class="section" style="padding:14px">
+      <h3>📋 .env Quick Reference</h3>
+      <pre style="background:#0f172a;padding:12px;border-radius:6px;font-size:.75rem;overflow-x:auto">GROQ_API_KEY=gsk_...
+BLAND_API_KEY=org_...
+GMAIL_SENDER_EMAIL=you@gmail.com
+GMAIL_APP_PASSWORD=xxxx xxxx xxxx xxxx
+TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_AUTH_TOKEN=your_auth_token
+TWILIO_FROM_NUMBER=+14155551234
+TWILIO_ADMIN_NUMBER=+14155559999
+GOOGLE_CLIENT_ID=xxx.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=GOCSPX-xxx</pre>
+    </div>
+  `);
+}
+
+/* ════════════════════════════════════════════════════════════
+   ACTIONS
+════════════════════════════════════════════════════════════ */
+async function scoreCompany(cid, reload=false) {
+  const r = await api('POST',`/companies/${cid}/score`);
+  if (!r) return;
+  toast(`Score: ${r.total_score}/100 — ${r.tier.toUpperCase()}${r.total_score>=80?' 🔥 Hot lead! SMS sent.':''}`, 'success');
+  if (reload) viewCompany(cid);
+  else goto('companies');
+}
+
+async function aiSummary(cid) {
+  toast('Generating AI summary...','info');
+  const r = await api('POST',`/companies/${cid}/ai-summary`);
+  if (r) { toast('Summary generated!','success'); viewCompany(cid); }
+}
+
+async function analyzeSignals(cid) {
+  toast('Analysing buying signals...','info');
+  const r = await api('POST',`/companies/${cid}/analyze-signals`);
+  if (r) { toast(`Found ${r.signals.length} signals!`,'success'); viewCompany(cid); }
+}
+
+async function deleteCompany(cid, name) {
+  if (!confirm(`Delete ${name}? This cannot be undone.`)) return;
+  const r = await api('DELETE',`/companies/${cid}`);
+  if (r) { toast(`${name} deleted`,'success'); goto('companies'); }
+}
+
+async function sendEmail(eid) {
+  const r = await api('POST',`/emails/${eid}/send`);
+  if (!r) return;
+  const sr = r.send_result || {};
+  if (sr.status === 'sent') toast('✅ Email sent! SMS notification dispatched.','success');
+  else toast(sr.message || 'Check Gmail config in Integrations','error');
+  goto('emails');
+}
+
+async function completeMeeting(mid, cid) {
+  const r = await api('PUT',`/meetings/${mid}`,{status:'completed'});
+  if (r) { toast('Meeting completed! SMS sent.','success'); if(cid) viewCompany(cid); else goto('meetings'); }
+}
+
+async function addToCalendar(mid, cid) {
+  toast('Adding to Google Calendar...','info');
+  const r = await api('POST',`/meetings/${mid}/calendar`);
+  if (!r) return;
+  if (r.google_meet_link) toast('✅ Calendar event created! Google Meet link added.','success');
+  else if (r.error) toast(r.error,'error');
+  if (cid) viewCompany(cid);
+}
+
+async function syncCall(cid_) {
+  const r = await api('GET',`/calls/${cid_}`);
+  if (r) { toast(`Call status: ${r.status}`,'info'); goto('calls'); }
+}
+
+async function uploadCSV(input) {
+  if (!input.files[0]) return;
+  const fd = new FormData();
+  fd.append('file', input.files[0]);
+  const r = await api('POST','/companies/upload-csv',fd,true);
+  if (r) toast(`Import started — ${input.files[0].name}. SMS sent on completion.`,'success');
+  input.value = '';
+}
+
+async function testGmail() {
+  const r = await api('POST','/integrations/gmail/test');
+  if (r) (r.success?toast:toastErr)(r.message);
+}
+async function sendTestGmail() {
+  const r = await api('POST','/integrations/gmail/send-test');
+  if (r) toast(r.success?'Test email sent!':r.message, r.success?'success':'error');
+}
+async function testBland() {
+  const r = await api('POST','/integrations/bland/test');
+  if (r) toast(r.message, r.success?'success':'error');
+}
+async function testTwilio() {
+  const to = v('sms-test-num');
+  if (!to) return toast('Enter a phone number','error');
+  const r = await api('POST','/integrations/twilio/test',{to_number:to});
+  if (r) toast(r.success?'✅ SMS sent!':JSON.stringify(r.result), r.success?'success':'error');
+}
+async function sendDailyReport() {
+  const r = await api('POST','/integrations/twilio/daily-report');
+  if (r) toast('📊 Daily report SMS sent!','success');
+}
+async function connectGoogle() {
+  const r = await api('GET','/integrations/google/auth-url');
+  if (r && r.auth_url) {
+    const w = window.open(r.auth_url+'&state='+(USER?USER.id:''), '_blank', 'width=500,height=600');
+    toast('Complete Google authorization in the popup, then refresh Integrations.','info');
+  } else toast(r?.message||'GOOGLE_CLIENT_ID not set','error');
+}
+async function disconnectGoogle() {
+  if (!confirm('Disconnect Google Calendar?')) return;
+  const r = await api('POST','/integrations/google/disconnect');
+  if (r) { toast('Disconnected','info'); integrations(); }
+}
+
+/* ════════════════════════════════════════════════════════════
+   MODALS
+════════════════════════════════════════════════════════════ */
+function openCompanyModal() {
+  ['co-id','co-name','co-industry','co-web','co-city','co-country','co-desc','co-tech','co-linkedin']
+    .forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  document.getElementById('co-emp').value='';
+  document.getElementById('co-rev').value='';
+  document.getElementById('co-modal-title').textContent='➕ Add Company';
+  openModal('company-modal');
+}
+
+async function editCompanyModal(cid) {
+  const co = await api('GET',`/companies/${cid}`);
+  if (!co) return;
+  s('co-id',cid); s('co-name',co.name||''); s('co-industry',co.industry||'');
+  s('co-emp',co.employee_count||''); s('co-rev',co.annual_revenue||'');
+  s('co-web',co.website||''); s('co-city',co.city||''); s('co-country',co.country||'');
+  s('co-status',co.status||'prospect'); s('co-desc',co.description||'');
+  const techs = Array.isArray(co.technologies) ? co.technologies.join(', ')
+    : (co.technologies||'');
+  s('co-tech',techs); s('co-linkedin',co.linkedin_url||'');
+  document.getElementById('co-modal-title').textContent='✏️ Edit Company';
+  openModal('company-modal');
+}
+
+async function saveCompany() {
+  const name = v('co-name').trim();
+  if (!name) return toast('Company name is required','error');
+  const cid = v('co-id');
+  const payload = {
+    name, industry:v('co-industry')||null,
+    employee_count:parseInt(v('co-emp'))||null,
+    annual_revenue:parseInt(v('co-rev'))||null,
+    website:v('co-web')||null, city:v('co-city')||null, country:v('co-country')||null,
+    status:v('co-status')||'prospect', description:v('co-desc')||null,
+    technologies:v('co-tech')||null, linkedin_url:v('co-linkedin')||null,
+  };
+  let r;
+  if (cid) r = await api('PUT',`/companies/${cid}`,payload);
+  else      r = await api('POST','/companies',payload);
+  if (!r) return;
+  closeModal('company-modal');
+  toast(`${name} ${cid?'updated':'added'}! SMS notification sent.`,'success');
+  goto('companies');
+}
+
+function openContactModal(companyId) {
+  document.getElementById('ct-company-id').value = companyId;
+  ['ct-fn','ct-ln','ct-email','ct-phone','ct-title','ct-dept'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  document.getElementById('ct-dm').checked = false;
+  openModal('contact-modal');
+}
+
+async function saveContact() {
+  const cid = v('ct-company-id');
+  const fn  = v('ct-fn').trim();
+  if (!fn || !cid) return toast('First name and company required','error');
+  const r = await api('POST','/contacts',{
+    company_id:parseInt(cid), first_name:fn, last_name:v('ct-ln')||null,
+    email:v('ct-email')||null, phone:v('ct-phone')||null,
+    title:v('ct-title')||null, department:v('ct-dept')||null,
+    seniority_level:v('ct-sen'), is_decision_maker:document.getElementById('ct-dm').checked,
+  });
+  if (!r) return;
+  closeModal('contact-modal');
+  toast('Contact added!','success');
+  viewCompany(parseInt(cid));
+}
+
+function openEmailModal(companyId) {
+  document.getElementById('em-company-id').value = companyId||'';
+  document.getElementById('em-custom').value='';
+  document.getElementById('email-preview').style.display='none';
+  _genEmailData=null; _lastEmailId=null;
+  openModal('email-modal');
+}
+
+async function genEmail() {
+  const cid = parseInt(v('em-company-id'));
+  if (!cid) { return toast('Select a company first','error'); }
+  toast('🤖 Generating email...','info');
+  const r = await api('POST','/emails/generate',{
+    company_id:cid, email_type:v('em-type'), custom_instructions:v('em-custom')});
+  if (!r) return;
+  _lastEmailId = r.id;
+  _genEmailData = r;
+  document.getElementById('em-subject').value = r.subject;
+  document.getElementById('em-body').value    = r.body;
+  document.getElementById('email-preview').style.display='block';
+  toast('Email generated! SMS notification sent.','success');
+}
+
+async function sendGenEmail() {
+  if (!_lastEmailId) return toast('Generate an email first','error');
+  // Update with any edits first
+  await api('PUT',`/emails/${_lastEmailId}`,{
+    subject:v('em-subject'), body:v('em-body')});
+  const r = await api('POST',`/emails/${_lastEmailId}/send`);
+  if (!r) return;
+  const sr = r.send_result||{};
+  closeModal('email-modal');
+  toast(sr.status==='sent'?'✅ Email sent! SMS dispatched.':(sr.message||'Check Gmail config'), sr.status==='sent'?'success':'error');
+}
+
+async function saveDraftEmail() {
+  if (!_lastEmailId) return;
+  await api('PUT',`/emails/${_lastEmailId}`,{subject:v('em-subject'),body:v('em-body')});
+  closeModal('email-modal');
+  toast('Draft saved!','success');
+}
+
+function openMeetingModal(companyId) {
+  document.getElementById('mtg-company-id').value = companyId||'';
+  ['mtg-title','mtg-desc'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('mtg-dur').value='30';
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('mtg-date').value=today;
+  document.getElementById('mtg-time').value='10:00';
+  openModal('meeting-modal');
+}
+
+async function saveMeeting() {
+  const cid   = parseInt(v('mtg-company-id'));
+  const title = v('mtg-title').trim();
+  if (!title) return toast('Title required','error');
+  if (!cid)   return toast('Select a company first','error');
+  const scheduled_at = `${v('mtg-date')} ${v('mtg-time')}:00`;
+  const r = await api('POST','/meetings',{
+    company_id:cid, title, meeting_type:v('mtg-type'),
+    description:v('mtg-desc')||null,
+    scheduled_at, duration_minutes:parseInt(v('mtg-dur'))||30,
+  });
+  if (!r) return;
+  closeModal('meeting-modal');
+  toast('Meeting scheduled! SMS + 3 reminders set (24h, 1h, 10min).','success');
+  if (cid) viewCompany(cid); else goto('meetings');
+}
+
+function openCallModal(companyId) {
+  document.getElementById('call-company-id').value = companyId||'';
+  document.getElementById('call-phone').value='';
+  document.getElementById('call-script').value='';
+  openModal('call-modal');
+}
+
+async function makeCall() {
+  const phone = v('call-phone').trim();
+  if (!phone) return toast('Phone number required (+14155550100)','error');
+  const cid = parseInt(v('call-company-id'))||null;
+  const r = await api('POST','/calls/make',{
+    company_id:cid, phone_number:phone,
+    objective:v('call-obj'), voice:v('call-voice'),
+    custom_task:v('call-script')||null,
+  });
+  if (!r) return;
+  const br = r.bland_result||{};
+  closeModal('call-modal');
+  if (br.status==='queued') toast(`Call queued! Bland ID: ${br.call_id||''}. SMS sent.`,'success');
+  else toast(br.message||'Call failed — check BLAND_API_KEY','error');
+  goto('calls');
+}
+
+/* ════════════════════════════════════════════════════════════
+   SYSTEM STATUS
+════════════════════════════════════════════════════════════ */
+async function loadStatus() {
+  try {
+    const r = await fetch('/health').then(r=>r.json());
+    const el = document.getElementById('sys-status');
+    if (!el) return;
+    el.innerHTML = '<b>System</b>'
+      + status_dot(r.groq,'Groq AI')
+      + status_dot(r.twilio,'Twilio SMS')
+      + status_dot(r.bland,'Bland AI')
+      + status_dot(r.gmail,'Gmail');
+  } catch(e) {}
+}
+function status_dot(ok,lbl){
+  return `<div style="margin-top:3px">${ok?'🟢':'🔴'} ${lbl}</div>`;
+}
+
+/* ════════════════════════════════════════════════════════════
+   UTILITIES
+════════════════════════════════════════════════════════════ */
+function set(id,html){ const el=document.getElementById(id); if(el) el.innerHTML=html; }
+function v(id){ const el=document.getElementById(id); return el?(el.value||''):''; }
+function s(id,val){ const el=document.getElementById(id); if(el) el.value=val; }
+function esc(s){ if(!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function fmt(n){ return Number(n||0).toLocaleString(); }
+function fmtM(n){ if(!n) return '0'; if(n>=1e9) return (n/1e9).toFixed(1)+'B'; if(n>=1e6) return (n/1e6).toFixed(0)+'M'; if(n>=1e3) return (n/1e3).toFixed(0)+'K'; return n; }
+function fmtDt(s){ if(!s) return '—'; return s.slice(0,16).replace('T',' '); }
+function metric(lbl,val,color='var(--accent)'){ return `<div class="metric-card"><div class="metric-val" style="color:${color}">${val}</div><div class="metric-lbl">${lbl}</div></div>`; }
+function scoreBadge(s){ const tier=s>=70?'hot':s>=40?'warm':'cold'; return `<span class="badge badge-${tier}">${s}/100</span>`; }
+function miniChart(data,key,color){
+  if(!data.length) return '<div class="empty">No data</div>';
+  const max=Math.max(...data.map(d=>d[key]||0),1);
+  return '<div style="display:flex;align-items:flex-end;gap:2px;height:60px">'
+    +data.slice(-20).map(d=>{const h=Math.round(((d[key]||0)/max)*60);
+      return `<div style="flex:1;height:${h}px;background:${color};border-radius:2px 2px 0 0;min-height:2px" title="${d.date}: ${d[key]}"></div>`;
+    }).join('')+'</div>';
+}
+
+let _debounceTimer;
+function debounce(fn,ms){ clearTimeout(_debounceTimer); _debounceTimer=setTimeout(fn,ms); }
+
+function openModal(id){ document.getElementById(id).classList.add('open'); }
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+document.addEventListener('click', e=>{ if(e.target.classList.contains('modal-backdrop')) e.target.classList.remove('open'); });
+
+function switchTab(el,panelId){
+  el.closest('.section,#content').querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.closest('.section,#content').querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  const panel=document.getElementById(panelId);
+  if(panel) panel.classList.add('active');
+}
+
+function toast(msg,type='info'){
+  const box=document.getElementById('toast');
+  const el=document.createElement('div');
+  el.className=`toast-msg toast-${type}`;
+  el.textContent=msg;
+  box.appendChild(el);
+  setTimeout(()=>el.remove(), type==='error'?5000:3000);
+}
+
+/* ════════════════════════════════════════════════════════════
+   BOOT
+════════════════════════════════════════════════════════════ */
+(function init(){
+  if (TOKEN && USER) {
+    showApp();
+  } else {
+    document.getElementById('login-screen').style.display='flex';
+    document.getElementById('app').style.display='none';
+  }
+})();
+</script>
+</body>
+</html>
